@@ -1,0 +1,46 @@
+service: ''
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: us-east-1
+  iam:
+    role:
+      name: ''
+      statements:
+        - Effect: 'Allow'
+          Action:           
+            - 'dynamodb:List*'
+            - 'dynamodb:DescribeReservedCapacity*'
+            - 'dynamodb:DescribeLimits'
+            - 'dynamodb:DescribeTimeToLive' 
+          Resource: '*'
+
+        - Effect: 'Allow'
+          Action:
+            - 'dynamodb:BatchGet*'
+            - 'dynamodb:DescribeStream'
+            - 'dynamodb:DescribeTable'
+            - 'dynamodb:Get*'
+            - 'dynamodb:Query'
+            - 'dynamodb:Scan'           
+          Resource: 'arn:aws:dynamodb:us-east-1:0000000000:table/table_name'
+  
+        - Effect: "Allow"
+          Action:
+            - "s3:GetObject"
+            - "s3:GetObjectAttributes"            
+            - "s3:PutObject"
+          Resource: '*' 
+
+        - Effect: 'Allow'
+          Action: "sns:Publish"
+          Resource: '*'
+
+functions:
+  filtrarAmbientesHomolog:
+    handler: parseJson.handler
+    timeout: 60
+    memorySize: 128   
+    events:
+      - schedule: cron(0 21 ? * 2-6 *)
