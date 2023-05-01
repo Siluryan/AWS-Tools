@@ -45,11 +45,11 @@ for response in response_iterator:
         function_data = {
             'FunctionName': function_name,
             'Code': code_response['Code'],
-            'Environment': env_response.get('Environment', {}),
+            'Environment': {
+                'Variables': env_variables
+            },
             'Layers': layers
         }
-
-        function_data['Configuration'] = env_response
 
         with BytesIO() as zip_file_buffer:
             with zipfile.ZipFile(zip_file_buffer, mode='w') as z:
