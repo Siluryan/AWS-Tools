@@ -6,8 +6,8 @@ import json
 from io import BytesIO
 from botocore.exceptions import ClientError
 
-region_name = 'sa-east-1'
-bucket_name = f'lambda-archive-prod-{region_name}'
+region_name = 'us-east-1'
+bucket_name = f'tecsinapse-lambda-archive-prod-{region_name}'
 
 logging.basicConfig(level=logging.INFO)
 
@@ -32,32 +32,40 @@ response_iterator = paginator.paginate()
 
 for response in response_iterator:
     for function in response['Functions']:
-        code_response = client.get_function(FunctionName=function['FunctionName'])
-        env_response = client.get_function_configuration(FunctionName=function['FunctionName'])
+        function_name = function['FunctionName']
+        file_name = function_name + '.zip'
+
+        code_response = client.get_function(FunctionName=function_name)
+        code_zip_file = BytesIO(requests.get(code_response['Code']['Location']).content)
+
+        env_response = client.get_function_configuration(FunctionName=function_name)
         env_variables = env_response.get('Environment', {}).get('Variables', {})
         layers = env_response.get('Layers', [])
 
-        functions_list = client.list_functions()
+        function_data = {
+            'FunctionName': function_name,
+            'Code': code_response['Code'],
+            'Environment': env_response.get('Environment', {}),
+            'Layers': layers
+        }
 
-        function_data = next((f for f in functions_list['Functions'] if f['FunctionName'] == function['FunctionName']), None)
+        function_data['Configuration'] = env_response
 
-        file_name = function['FunctionName'] + '.zip'
+        with BytesIO() as zip_file_buffer:
+            with zipfile.ZipFile(zip_file_buffer, mode='w') as z:
+                list_functions_json = json.dumps(function_data, indent=2).encode()
+                z.writestr('list-functions.json', list_functions_json)
 
-        zip_file = BytesIO()
-        with zipfile.ZipFile(zip_file, mode='w') as z:
-            list_functions_json = json.dumps(function_data, indent=2).encode()
-            z.writestr('list-functions.json', list_functions_json)
+                z.writestr(function_name + '.zip', code_zip_file.read())
 
-            code_zip_file = BytesIO(requests.get(code_response['Code']['Location']).content)
-            z.writestr(function['FunctionName'] + '.zip', code_zip_file.read())
+                for layer in layers:
+                    layer_response = client.get_layer_version(
+                        LayerName=layer['Arn'].split(':')[-2],
+                        VersionNumber=int(layer['Arn'].split(':')[-1])
+                    )
+                    layer_zip_file = BytesIO(requests.get(layer_response['Content']['Location']).content)
+                    z.writestr(layer['Arn'].split(':')[-1] + '.zip', layer_zip_file.read())
 
-            for layer in layers:
-                layer_response = client.get_layer_version(
-                    LayerName=layer['Arn'].split(':')[-2],
-                    VersionNumber=int(layer['Arn'].split(':')[-1])
-                )
-                layer_zip_file = BytesIO(requests.get(layer_response['Content']['Location']).content)
-                z.writestr(layer['Arn'].split(':')[-1] + '.zip', layer_zip_file.read())
-
-        s3.Bucket(bucket_name).put_object(Key=file_name, Body=zip_file.getvalue())
-        logging.info(f'The file {file_name} was saved to the {bucket_name} bucket.')
+            zip_file_buffer.seek(0)
+            s3.Bucket(bucket_name).put_object(Key=file_name, Body=zip_file_buffer.read())
+            logging.info(f'The file {file_name} was saved to the {bucket_name} bucket.')
