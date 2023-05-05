@@ -1,15 +1,15 @@
 import os
 import re
 import json
-import datetime
+import pandas as pd
 from datetime import datetime
 
 region = 'us-east-1'
 
-names = 'functionNames.txt'
-details = 'detailFunctions.json'
+names = f'nomesDasLambdas_{region}.txt'
 
 tmp = 'tmp_log'
+details = 'tmp_details.json'
 list_default = []
 
 os.system(f'aws lambda list-functions --region {region} | grep "FunctionName" > {names}')
@@ -63,4 +63,7 @@ detail_content = json.dumps(detail_dict, indent=2)
 with open(details,'w') as f:
      f.write(detail_content)
 
+df = pd.json_normalize(detail_dict['Functions'])
+df.to_csv(os.path.join(os.path.dirname(__file__), f'infoLambdas_{region}.csv'), index=False)
+os.remove(details)
 os.remove(tmp)
