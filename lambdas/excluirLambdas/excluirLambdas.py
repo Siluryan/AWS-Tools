@@ -1,12 +1,13 @@
-import pandas as pd
+import logging
 import boto3
 
-CSV_INPUT = 'csv-filtrado.csv' #csv com as lambdas que serão EXCLUIDAS
+FUNCTIONS_TO_DELETE = ['lambda-teste-para-excluir']
+REGION_NAME = 'us-east-1'  
 
-client = boto3.client('lambda')
+client = boto3.client('lambda', region_name=REGION_NAME)
 
-df = pd.read_csv(CSV_INPUT)
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-for function_name in df['FunctionName']:
-    response = client.delete_function(FunctionName=function_name)
-    print('Função Lambda {} removida com sucesso.'.format(function_name))
+for function_name in FUNCTIONS_TO_DELETE:
+    client.delete_function(FunctionName=function_name)
+    logging.info(f"Função Lambda {function_name} removida com sucesso.")
