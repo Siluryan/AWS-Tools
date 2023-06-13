@@ -1,0 +1,23 @@
+service: quarantine-lambdas
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:*
+        - iam:*
+        - cloudwatch:GetMetricStatistics
+      Resource: '*'
+
+functions:
+  quarantineLambdas:
+    handler: quarantineLambdas.handler
+    description: verifica lambdas sem uso
+    timeout: 180
+    events:
+      - schedule:
+          rate: cron(0 2 1 * ? *)
+          enabled: true

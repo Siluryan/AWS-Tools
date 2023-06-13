@@ -1,0 +1,34 @@
+service: lambda-schedule
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: sa-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:ListTags
+        - lambda:ListFunctions
+        - lambda:GetFunction
+        - lambda:GetFunctionConfiguration
+        - lambda:GetLayerVersion
+        - lambda:DeleteFunction       
+      Resource: "*"
+
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+      Resource: "arn:aws:s3:::NOME-DO-BUCKET/*"
+
+    - Effect: Allow
+      Action:
+        - s3:ListBucket
+      Resource: "*"
+
+functions:
+  archive-and-remove-lambdas:
+    handler: archiveAndRemoveLambdas.lambda_handler
+    timeout: 180
+    memorySize: 256
+    events:
+      - schedule: cron(0 0 1 * ? *)

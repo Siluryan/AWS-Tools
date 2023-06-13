@@ -7,16 +7,19 @@ from io import BytesIO
 from botocore.exceptions import ClientError
 
 bucket_name = 'backups'
-archive_folder = 'backup-lambdas'
+archive_folder = 'archive-lambdas'
+
+glacier_deep_archive_days = 365
+lifecycle_policy_name = 'GDA-por-365-dias'
 
 region_name = 'sa-east-1'
-function_names = ['teste-archive-lambdas'] # Lista de nomes das funções a serem processadas
+function_names = ['teste-archive-lambdas']
 
 logging.basicConfig(level=logging.INFO)
 
 session = boto3.Session(region_name=region_name)
 s3 = session.resource('s3')
-client = session.client('lambda')
+client = session.client('s3')
 
 bucket = s3.Bucket(bucket_name)
 archive_folder_exists = any(obj.key == f'{archive_folder}/' for obj in bucket.objects.filter(Prefix=f'{archive_folder}/'))
@@ -24,6 +27,45 @@ archive_folder_exists = any(obj.key == f'{archive_folder}/' for obj in bucket.ob
 if not archive_folder_exists:
     bucket.put_object(Key=f'{archive_folder}/')
     logging.info(f'{archive_folder} folder created in {bucket_name} bucket.')
+
+try:
+    bucket_lifecycle_configuration = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+    lifecycle_rules = bucket_lifecycle_configuration.get('Rules', [])
+except ClientError as e:
+    if e.response['Error']['Code'] == 'NoSuchLifecycleConfiguration':
+        lifecycle_rules = []
+    else:
+        raise
+
+archive_rule_exists = any(rule.get('ID') == lifecycle_policy_name for rule in lifecycle_rules)
+
+if not archive_rule_exists:
+    new_rule = {
+        'ID': lifecycle_policy_name,
+        'Status': 'Enabled',
+        'Filter': {
+            'Prefix': f'{archive_folder}/'
+        },
+        'Transitions': [
+            {
+                'Days': 0,
+                'StorageClass': 'DEEP_ARCHIVE'
+            }
+        ],
+        'Expiration': {
+            'Days': glacier_deep_archive_days
+        }
+    }
+
+    lifecycle_rules.append(new_rule)
+
+    lifecycle_configuration = {'Rules': lifecycle_rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle_configuration)
+    logging.info(f'Lifecycle configuration applied to objects inside {bucket_name}/{archive_folder} path.')
+else:
+    logging.info(f'Lifecycle configuration already exists for {bucket_name}/{archive_folder} path. Skipping creation.')
+
+client = session.client('lambda')
 
 for function_name in function_names:
     try:

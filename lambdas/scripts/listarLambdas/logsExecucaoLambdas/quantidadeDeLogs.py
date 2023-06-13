@@ -3,8 +3,8 @@ import csv
 from datetime import datetime, timedelta
 
 region_name = 'sa-east-1'
-start_time = datetime.strptime('02-05-2023 00:00:00', '%d-%m-%Y %H:%M:%S') # datetime.strptime('02-05-2023 00:00:00', '%d-%m-%Y %H:%M:%S')
-end_time = datetime.strptime('03-05-2023 23:59:59', '%d-%m-%Y %H:%M:%S') # datetime.strptime('03-05-2023 23:59:59', '%d-%m-%Y %H:%M:%S')
+start_time = datetime.strptime('02-05-2023 00:00:00', '%d-%m-%Y %H:%M:%S') 
+end_time = datetime.strptime('03-05-2023 23:59:59', '%d-%m-%Y %H:%M:%S')
 
 client = boto3.client('logs', region_name=region_name)
 

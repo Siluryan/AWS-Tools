@@ -1,0 +1,32 @@
+service: lambda-schedule
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: sa-east-1
+
+plugins:
+  - serverless-iam-roles-per-function
+
+functions:
+  getPodsk8s:
+    handler: getPodsk8s.lambda_handler
+    events:
+      - schedule: cron(0 4 * * ? *)
+
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - ssm:GetParameter
+        Resource: arn:aws:ssm:${self:provider.region}:*:parameter/NOME-DO-PARAMETRO
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+        Resource: arn:aws:s3:::NOME-DO-BUCKET/NOME-DA-PASTA/*
+
+package:
+  exclude:
+    - ./**
+  include:
+    - getPodsk8s.py
+    - kubeconfig.yaml
