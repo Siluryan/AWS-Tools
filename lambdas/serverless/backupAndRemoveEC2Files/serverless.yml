@@ -1,18 +1,12 @@
-service: Backup-and-Remove-EC2-Files
+service: Lifecycle-Backup-and-Remove-EC2-Files
 
 provider:
   name: aws
-  runtime: python3.8
+  runtime: python3.11
 
 functions:
-  sua-function-name:
+  lifecycle-backup-and-remove-ec2-files:
     handler: handler.lambda_handler
-    environment:
-      INSTANCE_ID: ''
-      BUCKET_NAME: ''
-      PATH: ''
-      YEAR_LIMIT: 2024
-      SSH_PRIVATE_KEY_PARAMETER_STORE_NAME: '' 
     iamRoleStatements:
       - Effect: "Allow"
         Action:
@@ -20,20 +14,17 @@ functions:
         Resource: "*"
       - Effect: "Allow"
         Action:
-          - "ssm:GetParameter"
-        Resource: "*"
-      - Effect: "Allow"
-        Action:
           - "s3:PutObject"
-        Resource: "*"
-      - Effect: "Allow"
-        Action:
           - "s3:GetObject"
         Resource: "*"
+      - Effect: "Allow"
+        Action:
+          - "ssm:GetParameter"
+        Resource: "*"
+    environment:
+      CRON_EXPRESSION: ${env:CRON_EXPRESSION}
+    events:
+      - schedule: cron(${env:CRON_EXPRESSION})
 
 plugins:
   - serverless-python-requirements
-
-custom:
-  pythonRequirements:
-    dockerizePip: non-linux

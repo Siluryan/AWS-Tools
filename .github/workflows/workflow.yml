@@ -1,7 +1,28 @@
-name: Deploy Backup and Remove Files from EC2 Instances
+name: Deploy Lifecycle Backup and Remove Files from EC2 Instances
 
 on:
   workflow_dispatch:
+    inputs:
+      instance_id:
+        description: 'ID da instância EC2 onde será implementada a rotina de backup e remoção'
+        required: true
+      bucket_name:
+        description: 'Bucket de destino dos arquivos compactados'
+        required: true
+      path_name:
+        description: 'Caminho dentro do bucket onde será colocado o backup dos arquivos'
+        required: true
+      year_limit:
+        description: |
+          Ano limite da data de modificação dos arquivos
+          (ex.: caso inserido 2024, apenas arquivos de 2023 para trás serão considerados aptos à remoção pela lifecycle)'
+      ssh_private_key_parameter_store_name:
+        description: ''
+        required: true
+      lifecycle_interval_days:
+        description: 'Intervalo entre as execuções do backup e remoção dos arquivos (em meses)'
+        required: true
+        default: '1'
 
 jobs:
   deploy:
@@ -15,10 +36,10 @@ jobs:
         with:
           node-version: 20.x
 
-      - name: Use Python 3.8
+      - name: Use Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: 3.8
+          python-version: 3.11
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -30,7 +51,15 @@ jobs:
       - name: Install serverless
         run: npm install -g serverless
 
-      - name: Deploy - Central
+      - name: Deploy Lifecycle
+        env:
+          INSTANCE_ID: ${{ github.event.inputs.instance_id }}
+          BUCKET_NAME: ${{ github.event.inputs.bucket_name }}
+          PATH_NAME: ${{ github.event.inputs.path_name }}
+          YEAR_LIMIT: ${{ github.event.inputs.year_limit }}
+          LIFECYCLE_INTERVAL_DAYS: ${{ github.event.inputs.lifecycle_interval_days }}
+          SSH_PRIVATE_KEY_PARAMETER_STORE_NAME: ${{ github.event.inputs.ssh_private_key_parameter_store_name }}          
         run: |
+          CRON_EXPRESSION="0 0 1 */${LIFECYCLE_INTERVAL_DAYS} *"
           cd lambdas/serverless/backupAndRemoveEC2Files
-          serverless deploy --stage dev --verbose 
+          serverless deploy --stage dev --verbose
