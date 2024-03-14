@@ -1,0 +1,39 @@
+service: Backup-and-Remove-EC2-Files
+
+provider:
+  name: aws
+  runtime: python3.8
+
+functions:
+  sua-function-name:
+    handler: handler.lambda_handler
+    environment:
+      INSTANCE_ID: ''
+      BUCKET_NAME: ''
+      PATH: ''
+      YEAR_LIMIT: 2024
+      SSH_PRIVATE_KEY_PARAMETER_STORE_NAME: '' 
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "ec2:DescribeInstances"
+        Resource: "*"
+      - Effect: "Allow"
+        Action:
+          - "ssm:GetParameter"
+        Resource: "*"
+      - Effect: "Allow"
+        Action:
+          - "s3:PutObject"
+        Resource: "*"
+      - Effect: "Allow"
+        Action:
+          - "s3:GetObject"
+        Resource: "*"
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux

@@ -1,0 +1,36 @@
+name: Deploy Backup and Remove Files from EC2 Instances
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Use Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::914256152987:role/backup-and-remove-ec2-files
+          role-session-name: backup_and_remove_ec2_files
+          aws-region: us-east-1    
+                
+      - name: Install serverless
+        run: npm install -g serverless
+
+      - name: Deploy - Central
+        run: |
+          cd lambdas/serverless/backupAndRemoveEC2Files
+          serverless deploy --stage dev --verbose 
